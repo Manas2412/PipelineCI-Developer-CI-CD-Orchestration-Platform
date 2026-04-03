@@ -9,6 +9,10 @@
   "devDependencies": {
     "@types/bun": "latest"
   },
+  "exports": {
+    ".": "./index.ts",
+    "./index": "./index.ts"
+  },
   "peerDependencies": {
     "typescript": "^5"
   }

@@ -1,5 +1,5 @@
 {
-  "name": "api",
+  "name": "redis",
   "module": "index.ts",
   "type": "module",
   "private": true,
@@ -10,8 +10,10 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "db": "*",
-    "types": "*",
-    "redis": "*"
+    "ioredis": "^5.10.1"
+  },
+  "exports": {
+    ".": "./index.ts",
+    "./index": "./index.ts"
   }
 }
