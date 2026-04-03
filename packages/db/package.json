@@ -9,6 +9,10 @@
   "peerDependencies": {
     "typescript": "^5"
   },
+  "exports": {
+    ".": "./index.ts",
+    "./index": "./index.ts"
+  },
   "dependencies": {
     "@prisma/client": "^7.6.0",
     "@types/dotenv": "^8.2.3",

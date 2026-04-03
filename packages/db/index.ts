@@ -1,23 +1,20 @@
-import { PrismaClient } from "@prisma/client/extension";
+import { PrismaClient } from "./generated/prisma/client.ts";
 
 declare global {
-    var __prisma: PrismaClient | undefined
+    var __prisma: PrismaClient | undefined;
 }
 
 function createPrismaClient() {
-    return new PrismaClient({
-        log: 
-        process.env.NODE_ENV === 'development'
-          ? ['query', 'error', 'warn']
-          : ['error']
-    })
+  return new PrismaClient({
+    accelerateUrl: process.env.DATABASE_URL ?? "",
+  });
 }
 
-export const prisma : PrismaClient = globalThis.__prisma ?? createPrismaClient()
+export const prisma: PrismaClient = globalThis.__prisma ?? createPrismaClient();
 
-if(process.env.NODE_ENV !== 'production'){
-    globalThis.__prisma == prisma
+if (process.env.NODE_ENV !== "production") {
+  globalThis.__prisma = prisma;
 }
 
-export * from '@prisma/client'
-export default prisma
+export * from "./generated/prisma/client.ts";
+export default prisma;
