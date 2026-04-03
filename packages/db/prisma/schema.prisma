@@ -1,0 +1,326 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────
+// Auth
+// ─────────────────────────────────────────
+
+model User {
+  id        String   @id @default(uuid())
+  email     String
+  password  String
+  name      String?
+  avatarUrl String?
+  role      UserRole @default(MEMBER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships OrgMember[]
+  tokens      ApiToken[]
+
+  @@map("users")
+}
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members  OrgMember[]
+  projects Project[]
+
+  @@map("organizations")
+}
+
+model OrgMember {
+  id       String   @id @default(uuid())
+  role     OrgRole  @default(MEMBER)
+  joinedAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  orgId String
+  or    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, orgId])
+  @@map("org_members")
+}
+
+model ApiToken {
+  id         String    @id @default(uuid())
+  name       String
+  tokenHash  String    @unique
+  lastUsedAt DateTime?
+  expiresAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("api_tokens")
+}
+
+// ─────────────────────────────────────────
+// Projects & Pipelines
+// ─────────────────────────────────────────
+
+model Project {
+  id            String   @id @default(uuid())
+  name          String
+  slug          String
+  repoUrl       String?
+  description   String?
+  webhookSecret String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  orgId String
+  org   Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  pipelines Pipeline[]
+  runs      Run[]
+
+  @@unique([orgId, slug])
+  @@map("projects")
+}
+
+model Pipeline {
+  id          String      @id @default(uuid())
+  name        String
+  description String?
+  yamlConfig  String
+  trigger     TriggerType @default(MANUAL)
+  branch      String?
+  cronExpr    String?
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  runs Run[]
+
+  @@map("pipeline")
+}
+
+// ─────────────────────────────────────────
+// Runs — a single execution of a Pipeline
+// ─────────────────────────────────────────
+
+model Run {
+  id          String      @id @default(uuid())
+  status      RunStatus   @default(PENDING)
+  triggerSha  TriggerType
+  commitSha   String?
+  commitMsg   String?
+  branch      String?
+  triggeredBy String?
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  createdAt   DateTime    @default(now())
+
+  pipelineId String
+  pipeline   Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  stepRuns  StepRun[]
+  artifacts Artifact[]
+
+  @@index([pipelineId, createdAt(sort: Desc)])
+  @@index([projectId, createdAt(sort: Desc)])
+  @@index([status])
+  @@map("runs")
+}
+
+// ─────────────────────────────────────────
+// StepRun — one step within a Run
+// ─────────────────────────────────────────
+
+model StepRun {
+  id           String    @id @default(uuid())
+  name         String
+  status       RunStatus @default(PENDING)
+  image        String
+  commands     String[]
+  exitCode     Int?
+  errorMessage String?
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  runnerId     String?
+  createdAt    DateTime  @default(now())
+
+  runId String
+  run   Run    @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  dependsOn  StepRun[] @relation("StepDependency")
+  dependents StepRun[] @relation("StepDependency")
+
+  logChunks LogChunk[]
+  artifacts Artifact[]
+
+  @@index([runId, createdAt])
+  @@map("step_runs")
+}
+
+// ─────────────────────────────────────────
+// Logs — persisted log output per step
+// ─────────────────────────────────────────
+
+model LogChunk {
+  id        String    @id @default(uuid())
+  seq       Int //ordering key - monotonically increasing per stepRun
+  text      String //raw log line (may contain ANSI escape code)
+  stream    LogStream @default(STDOUT)
+  createdAt DateTime  @default(now())
+
+  stepRunId String
+  stepRun   StepRun @relation(fields: [stepRunId], references: [id], onDelete: Cascade)
+
+  @@index([stepRunId, seq])
+  @@map("log_chunks")
+}
+
+// ─────────────────────────────────────────
+// Artifacts — build outputs uploaded by a step
+// ─────────────────────────────────────────
+
+model Artifact {
+  id          String   @id @default(uuid())
+  name        String
+  storagePath String
+  sizeBytes   BigInt
+  contentType String?
+  createdAt   DateTime @default(now())
+
+  runId String
+  run   Run    @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  stepRunId String
+  stepRun   StepRun @relation(fields: [stepRunId], references: [id], onDelete: Cascade)
+
+  @@map("artifacts")
+}
+
+// ─────────────────────────────────────────
+// Runners — worker processes in the pool
+// ─────────────────────────────────────────
+
+model Runner {
+  id            String       @id @default(uuid())
+  label         String
+  status        RunnerStatus @default(OFFLINE)
+  capacity      Int          @default(4)
+  activeJobs    Int          @default(0)
+  hostname      String?
+  ipAddress     String?
+  version       String?
+  lastHeartbeat DateTime?
+  registeredAt  DateTime     @default(now())
+
+  @@map("runners")
+}
+
+// ─────────────────────────────────────────
+// Webhook events — raw incoming payloads
+// ─────────────────────────────────────────
+
+model WebHookEvent {
+  id          String             @id @default(uuid())
+  source      String
+  eventType   String
+  payload     Json
+  signature   String?
+  status      WebHookEventStatus @default(RECEIVED)
+  processedAt DateTime?
+  error       String?
+  createdAt   DateTime           @default(now())
+
+  projectId String?
+
+  @@index([projectId, createdAt(sort: Desc)])
+  @@map("webhook_events")
+}
+
+// ─────────────────────────────────────────
+// Audit log — immutable record of all mutations
+// ─────────────────────────────────────────
+
+model AuditLog {
+  id           String   @id @default(uuid())
+  actorId      String?
+  actorType    String   @default("user")
+  action       String
+  resourceId   String?
+  resourceType String?
+  metadata     Json
+  createdAt    DateTime @default(now())
+
+  @@index([actorId])
+  @@index([resourceType, resourceId])
+  @@index([createdAt(sort: Desc)])
+  @@map("audit_logs")
+}
+
+// ─────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────
+
+enum UserRole {
+  ADMIN
+  MEMBER
+}
+
+enum OrgRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum RunStatus {
+  PENDING
+  QUEUED
+  RUNNING
+  SUCCESS
+  FAILED
+  CANCELLED
+  SKIPPED // step skipped because an upstream def failed
+}
+
+enum TriggerType {
+  MANUAL
+  PUSH
+  PULL_REQUEST
+  SCHEDULED
+  API
+}
+
+enum RunnerStatus {
+  ONLINE
+  BUSY
+  OFFLINE
+  DRAINING // accepting no new jobs, finishing current ones
+}
+
+enum LogStream {
+  STDOUT
+  STDERR
+}
+
+enum WebHookEventStatus {
+  RECEIVED
+  PROCESSED
+  FAILED
+  IGNORED // valid payload but no matching pipeline
+}
