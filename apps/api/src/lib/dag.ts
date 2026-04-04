@@ -1,7 +1,5 @@
 import * as yaml from "js-yaml"
-import type { PipelineDef, StepDef, DagNode } from "types"
-
-type DagGraph = Record<string, DagNode>
+import type { PipelineDef, StepDef, DagNode, DagGraph } from "types"
 
 // ─────────────────────────────────────────────────────────────
 // Parse raw YAML string into a typed PipelineDef
@@ -41,11 +39,11 @@ export function parsePipelineYaml(raw: string) {
             throw new Error(`Step ${i} must have a "name" field`)
         }
 
-        if(!step.image || typeof step.image !== 'string'){
+        if (!step.image || typeof step.image !== 'string') {
             throw new Error(`Step "${step.name}" must have an "image" field`)
         }
 
-        if(!Array.isArray(step.commands) || step.commands.length === 0){
+        if (!Array.isArray(step.commands) || step.commands.length === 0) {
             throw new Error(`Step "${step.name}" must have a non-empty "commands" array`)
         }
 
@@ -63,7 +61,7 @@ export function parsePipelineYaml(raw: string) {
     return {
         name: obj.name,
         steps,
-        env: obj.env && typeof obj.env === 'object' ? (obj.env as Record<string,string>) : {}
+        env: obj.env && typeof obj.env === 'object' ? (obj.env as Record<string, string>) : {}
     }
 }
 
@@ -76,13 +74,13 @@ export function buildDag(def: PipelineDef): DagGraph {
     const names = new Set(def.steps.map((s) => s.name))
 
     // Validate all dependsOn references exist
-    for(const step of def.steps){
-        for(const dep of step.dependsOn ?? []) {
-            if(!names.has(dep)){
+    for (const step of def.steps) {
+        for (const dep of step.dependsOn ?? []) {
+            if (!names.has(dep)) {
                 throw new Error(`Step "${step.name}" depends on unknown step "${dep}"`)
             }
 
-            if(dep === step.name) {
+            if (dep === step.name) {
                 throw new Error(`Step "${step.name}" cannot depend on itself`)
             }
         }
@@ -91,7 +89,7 @@ export function buildDag(def: PipelineDef): DagGraph {
     // Build adjacency : for each step record who it depends on and who depends on it
     const graph: DagGraph = {}
 
-    for(const step of def.steps) {
+    for (const step of def.steps) {
         graph[step.name] = {
             name: step.name,
             dependsOn: step.dependsOn ?? [],
@@ -100,7 +98,7 @@ export function buildDag(def: PipelineDef): DagGraph {
         }
     }
 
-    for(const step of def.steps) {
+    for (const step of def.steps) {
         for (const dep of step.dependsOn ?? []) {
             graph[dep]!.dependents.push(step.name)
         }
@@ -126,7 +124,7 @@ export function topoSort(graph: DagGraph): string[][] {
 
     const inDegree: Record<string, number> = {}
 
-    for(const name of Object.keys(graph)) {
+    for (const name of Object.keys(graph)) {
         inDegree[name] = graph[name]!.dependsOn.length
     }
 
@@ -137,13 +135,13 @@ export function topoSort(graph: DagGraph): string[][] {
         layers.push(currentLayer)
         const nextLayer: string[] = []
 
-        for(const name of currentLayer) {
+        for (const name of currentLayer) {
             const node = graph[name]
-            if(!node) continue
+            if (!node) continue
 
-            for(const dependent of node.dependents){
+            for (const dependent of node.dependents) {
                 inDegree[dependent]!--
-                if(inDegree[dependent]! === 0){
+                if (inDegree[dependent]! === 0) {
                     nextLayer.push(dependent)
                 }
             }
@@ -153,7 +151,7 @@ export function topoSort(graph: DagGraph): string[][] {
     }
 
     const processed = layers.flat().length
-    if(processed !== Object.keys(graph).length){
+    if (processed !== Object.keys(graph).length) {
         throw new Error('Cycle detected in Pipeline DAG during topo sort')
     }
 
@@ -172,22 +170,22 @@ export function getReadySteps(
     runningNames: Set<string>
 ): string[] {
     return Object.values(graph)
-      .filter((node) => {
-        //Already done or running - skip
-        if(completeNames.has(node.name))
-            return false
-        if(failedNames.has(node.name))
-            return false
-        if(runningNames.has(node.name))
-            return false
+        .filter((node) => {
+            //Already done or running - skip
+            if (completeNames.has(node.name))
+                return false
+            if (failedNames.has(node.name))
+                return false
+            if (runningNames.has(node.name))
+                return false
 
-        //All dependencies must be completed (not failed)
-        const allDepsComplete = node.dependsOn.every((dep) => completeNames.has(dep))
-        const anyDepFailed = node.dependsOn.some((dep) => failedNames.has(dep))
+            //All dependencies must be completed (not failed)
+            const allDepsComplete = node.dependsOn.every((dep) => completeNames.has(dep))
+            const anyDepFailed = node.dependsOn.some((dep) => failedNames.has(dep))
 
-        return allDepsComplete && !anyDepFailed
-      })
-      .map((n) => n.name)
+            return allDepsComplete && !anyDepFailed
+        })
+        .map((n) => n.name)
 }
 
 
@@ -200,7 +198,7 @@ function detectCycle(graph: DagGraph): void {
     const BLACK = 2 // fully processed
 
     const color: Record<string, number> = {}
-    for(const name of Object.keys(graph)) color[name] = WHITE
+    for (const name of Object.keys(graph)) color[name] = WHITE
 
     function dfs(name: string, path: string[]): void {
         color[name] = GRAY
@@ -208,20 +206,20 @@ function detectCycle(graph: DagGraph): void {
         const node = graph[name]
         if (!node) return
 
-        for(const dep of node.dependsOn){
-            if(color[dep] === GRAY)
+        for (const dep of node.dependsOn) {
+            if (color[dep] === GRAY)
                 throw new Error(`Cycle detected in pipeline DAG: ${[...path, name, dep].join(' -> ')}`)
 
-            if(color[dep] === WHITE)
-                dfs(dep,[...path, name])
+            if (color[dep] === WHITE)
+                dfs(dep, [...path, name])
         }
 
         color[name] = BLACK
     }
 
-    for(const name of Object.keys(graph)) {
-        if(color[name] === WHITE)
-            dfs(name,[])
+    for (const name of Object.keys(graph)) {
+        if (color[name] === WHITE)
+            dfs(name, [])
     }
 }
 
@@ -229,7 +227,7 @@ function computeDepths(graph: DagGraph): void {
     const visited = new Set<string>()
 
     function depth(name: string): number {
-        if(visited.has(name))
+        if (visited.has(name))
             return graph[name]!.depth
 
         visited.add(name)
@@ -238,7 +236,7 @@ function computeDepths(graph: DagGraph): void {
 
         const deps = node.dependsOn
 
-        if(deps.length === 0)
+        if (deps.length === 0)
             node.depth = 0
         else
             node.depth = Math.max(...deps.map((d: string) => depth(d))) + 1

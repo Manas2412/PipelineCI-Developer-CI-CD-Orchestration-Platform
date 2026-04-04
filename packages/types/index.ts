@@ -60,7 +60,7 @@ export interface DagNode {
     depth: number
 }
 
-export type DagGraph = Record<string,string>
+export type DagGraph = Record<string, DagNode>
 
 
 // ─────────────────────────────────────────────────────────────
@@ -82,7 +82,7 @@ export interface StepCompleteMessage {
     stepRunId: string
     stepName: string
     exitCode: number
-    status: 'SUCCESS' | 'FAILED' | 'CANCELED'
+    status: 'SUCCESS' | 'FAILED' | 'CANCELLED'
 }
 
 

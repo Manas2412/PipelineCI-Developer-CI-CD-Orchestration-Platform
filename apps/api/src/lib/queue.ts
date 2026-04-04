@@ -18,7 +18,7 @@ export async function enqueueJob(msg: jobMessage): Promise<string> {
         'timeoutSeconds', String(msg.timeoutSeconds),
     )
 
-    if(!streamId)
+    if (!streamId)
         throw new Error('Failed to enqueue job into Redis Stream')
     console.log(`[Queue] Enqueued step "${msg.stepName}" (${msg.stepRunId} -> ${streamId})`)
     return streamId;
@@ -32,7 +32,7 @@ export async function enqueueJob(msg: jobMessage): Promise<string> {
 export async function publishStepComplete(msg: StepCompleteMessage): Promise<void> {
     await redis.xadd(
         Keys.stepCompleteStream(),
-        "*", 
+        "*",
         'runId', msg.runId,
         'stepRunId', msg.stepRunId,
         'stepName', msg.stepName,
@@ -40,28 +40,28 @@ export async function publishStepComplete(msg: StepCompleteMessage): Promise<voi
         'status', msg.status
     )
 }
-    
+
 
 // ─────────────────────────────────────────────────────────────
 // Consumer group bootstrap (call once at API startup)
 // ──────────────────────────────────────────────────────────
 
 export async function ensureConsumerGroup(): Promise<void> {
-    const groups: Array<{stream:string; group:string}> = [
-        {stream: Keys.jobStream(), group: 'runners'},
-        {stream: Keys.stepCompleteStream(), group: 'scheduler'},
+    const groups: Array<{ stream: string; group: string }> = [
+        { stream: Keys.jobStream(), group: 'runners' },
+        { stream: Keys.stepCompleteStream(), group: 'scheduler' },
     ]
 
-    for(const {stream, group} of groups) {
+    for (const { stream, group } of groups) {
         try {
             //MKSTREAM creates the stream if it doesn't exist
             await redis.xgroup('CREATE', stream, group, '0', 'MKSTREAM')
             console.log(`[Queue] Consumer group "${group}" on "${stream}" ready`)
-        }catch(err: unknown) {
+        } catch (err: unknown) {
             //BUSYGROUP means the group already exists, which is fine
-            if(err instanceof Error && err.message.includes('BUSYGROUP')){
+            if (err instanceof Error && err.message.includes('BUSYGROUP')) {
                 // already exists, skip
-            }else{
+            } else {
                 throw err
             }
         }
@@ -81,7 +81,7 @@ export async function publishLogLine(
     const seq = await redis.incr(Keys.logSeq(stepRunId))
     await redis.publish(
         Keys.logChannel(stepRunId),
-        JSON.stringify({seq, text, stream, stepRunId})
+        JSON.stringify({ seq, text, stream, stepRunId })
     )
     return seq
 }
