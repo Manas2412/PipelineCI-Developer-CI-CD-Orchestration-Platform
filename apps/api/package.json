@@ -4,14 +4,16 @@
   "type": "module",
   "private": true,
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@types/js-yaml": "^4.0.9"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "dependencies": {
     "db": "*",
-    "types": "*",
-    "redis": "*"
+    "js-yaml": "^4.1.1",
+    "redis": "*",
+    "types": "*"
   }
 }
