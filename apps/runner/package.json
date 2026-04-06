@@ -3,10 +3,23 @@
   "module": "index.ts",
   "type": "module",
   "private": true,
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "start": "bun src/index.ts",
+    "check-types": "tsc --noEmit"
+  },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@types/dockerode": "^4.0.1"
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "dependencies": {
+    "db": "*",
+    "dockerode": "^4.0.10",
+    "redis": "*",
+    "types": "*",
+    "zod": "^4.3.6"
   }
 }
