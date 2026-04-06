@@ -16,7 +16,7 @@ export async function runsRoutes(app: FastifyInstance) {
     // All run routes require auth
     app.addHook('preHandler', async (req, reply) => {
         try {
-            await (app as any).authenticate(req, reply)
+            await app.authenticate(req, reply)
         } catch (err) {
             reply.send(err)
         }

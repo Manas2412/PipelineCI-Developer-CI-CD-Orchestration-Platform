@@ -1,8 +1,17 @@
 import Fastify from 'fastify'
+import type { FastifyRequest, FastifyReply } from 'fastify'
 import jwt from '@fastify/jwt'
 import { authRoutes } from './routes/auth'
 import { pipelineRoutes } from './routes/pipeline'
 import { runsRoutes } from './routes/runs'
+import { logsRoutes } from './routes/logs'
+import { projectsRoutes } from './routes/projects'
+
+declare module 'fastify' {
+  export interface FastifyInstance {
+    authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>
+  }
+}
 
 const app = Fastify({
   logger: true
@@ -26,6 +35,8 @@ app.decorate("authenticate", async (request: any, reply: any) => {
 app.register(authRoutes, { prefix: '/api/auth' })
 app.register(pipelineRoutes, { prefix: '/api/pipelines' })
 app.register(runsRoutes, { prefix: '/api/runs' })
+app.register(logsRoutes, { prefix: '/api/logs' })
+app.register(projectsRoutes, { prefix: '/api/projects' })
 
 const start = async () => {
   try {

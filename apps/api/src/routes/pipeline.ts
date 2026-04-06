@@ -20,7 +20,7 @@ export async function pipelineRoutes(app: FastifyInstance) {
   // Ensure authenticate is registered on the app instance
   app.addHook('preHandler', async (req, reply) => {
     try {
-      await (app as any).authenticate(req, reply);
+      await app.authenticate(req, reply);
     } catch (err) {
       reply.send(err);
     }
