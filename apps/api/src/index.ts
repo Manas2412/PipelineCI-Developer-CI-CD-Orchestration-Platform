@@ -1,6 +1,7 @@
 import Fastify from 'fastify'
 import jwt from '@fastify/jwt'
 import { authRoutes } from './routes/auth'
+import { pipelineRoutes } from './routes/pipeline'
 
 const app = Fastify({
   logger: true
@@ -11,8 +12,18 @@ app.register(jwt, {
   secret: process.env.JWT_SECRET || 'supersecret'
 })
 
+// Decorate app with authenticate hook
+app.decorate("authenticate", async (request: any, reply: any) => {
+  try {
+    await request.jwtVerify()
+  } catch (err) {
+    reply.send(err)
+  }
+})
+
 // Register routes
 app.register(authRoutes, { prefix: '/api/auth' })
+app.register(pipelineRoutes, { prefix: '/api/pipelines' })
 
 const start = async () => {
   try {
