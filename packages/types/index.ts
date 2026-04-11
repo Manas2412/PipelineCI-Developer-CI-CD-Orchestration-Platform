@@ -135,7 +135,7 @@ export interface UpdatePipelineRequest {
     trigger?: string
     branch?: string
     cronExpr?: string
-    isActive: boolean
+    isActive?: boolean
 }
 
 // Runs
