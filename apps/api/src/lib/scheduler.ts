@@ -2,7 +2,7 @@ import { redis, Keys } from 'redis'
 import { prisma, RunStatus } from 'db'
 import { parsePipelineYaml, buildDag, getReadySteps } from './dag'
 import { enqueueJob } from './queue'
-import type { DagGraph, jobMessage } from 'types'
+import type { DagGraph, JobMessage } from 'types'
 
 const CONSUMER_GROUP = 'scheduler'
 const CONSUMER_NAME = `scheduler-${process.pid}`
@@ -166,7 +166,7 @@ export async function handleStepComplete(msg: {
             data: {status: RunStatus.QUEUED}
         })
 
-        const job: jobMessage = {
+        const job: JobMessage = {
             runId, 
             stepRunId: stepRun.id,
             stepName,
@@ -215,7 +215,7 @@ export async function kickOffRun(runId: string): Promise<void> {
             data: {status: RunStatus.QUEUED},
         })
 
-        const job: jobMessage = {
+        const job: JobMessage = {
             runId,
             stepRunId: stepRun.id,
             stepName,

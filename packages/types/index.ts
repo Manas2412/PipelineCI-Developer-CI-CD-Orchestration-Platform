@@ -67,7 +67,7 @@ export type DagGraph = Record<string, DagNode>
 // Redis Stream message payloads
 // ─────────────────────────────────────────────────────────────
 
-export interface jobMessage {
+export interface JobMessage {
     runId: string
     stepRunId: string
     stepName: string
