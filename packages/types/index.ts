@@ -97,7 +97,7 @@ export interface LoginRequest {
 
 export interface LoginResponse {
     token: string
-    user: string
+    user: SafeUser
 }
 
 export interface SafeUser {

@@ -109,7 +109,7 @@ export async function runsRoutes(app: FastifyInstance) {
                     pipelineId: body.pipelineId,
                     projectId: pipeline.projectId,
                     status: RunStatus.QUEUED,
-                    triggerSha: TriggerType.MANUAL,
+                    triggerType: TriggerType.MANUAL,
                     triggeredBy: userId,
                     commitSha: body.commitSha,
                     commitMsg: body.commitMsg,

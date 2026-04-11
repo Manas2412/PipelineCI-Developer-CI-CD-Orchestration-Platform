@@ -121,7 +121,7 @@ model Pipeline {
 model Run {
   id          String      @id @default(uuid())
   status      RunStatus   @default(PENDING)
-  triggerSha  TriggerType
+  triggerType TriggerType @default(MANUAL)
   commitSha   String?
   commitMsg   String?
   branch      String?

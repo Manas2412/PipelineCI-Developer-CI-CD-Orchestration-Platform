@@ -2,7 +2,7 @@ import {create} from 'zustand'
 import {persist} from 'zustand/middleware'
 import type { SafeUser } from 'types'
 
-interface AuthState {
+export interface AuthState {
     token: string | null
     user: SafeUser | null
     setAuth: (token: string, user: SafeUser) => void

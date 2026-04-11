@@ -6,6 +6,7 @@ declare global {
 }
 
 function createPrismaClient() {
+  console.log('Initializing Prisma with DATABASE_URL:', process.env.DATABASE_URL);
   return new PrismaClient();
 }
 

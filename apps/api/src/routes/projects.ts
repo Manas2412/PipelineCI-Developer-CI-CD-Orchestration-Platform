@@ -195,7 +195,7 @@ export async function projectsRoutes(app: FastifyInstance) {
               pipelineId: pipeline.id,
               projectId: id,
               status: RunStatus.PENDING,
-              triggerSha: 'PUSH',
+              triggerType: 'PUSH',
               triggeredBy: 'webhook',
               commitSha,
               branch
