@@ -112,8 +112,8 @@ export interface SafeUser {
 export interface CreateProjectRequest {
     name: string
     slug: string
-    repoUrl: string
-    description: string
+    repoUrl?: string
+    description?: string
     orgId: string
 }
 

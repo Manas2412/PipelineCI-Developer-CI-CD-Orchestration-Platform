@@ -11,7 +11,8 @@
     "check-types": "tsc --noEmit"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@types/pg": "^8.20.0"
   },
   "peerDependencies": {
     "typescript": "^5"
@@ -21,10 +22,12 @@
     "./index": "./index.ts"
   },
   "dependencies": {
+    "@prisma/adapter-pg": "^7.7.0",
     "@prisma/client": "^7.6.0",
     "@prisma/client-runtime-utils": "7.6.0",
     "@types/dotenv": "^8.2.3",
     "dotenv": "^17.4.0",
+    "pg": "^8.20.0",
     "prisma": "^7.6.0"
   }
 }

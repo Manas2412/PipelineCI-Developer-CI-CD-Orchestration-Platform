@@ -1,4 +1,5 @@
-import React from 'react'
+'use client'
+
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { clsx } from 'clsx'
@@ -19,7 +20,7 @@ const NAV = [
   { href: '/runners',    label: 'Runners',   icon: Server          },
 ]
 
-export function Sidebar(): React.ReactNode {
+export function Sidebar() {
   const pathname = usePathname()
   const { user, logout } = useAuthStore()
 
@@ -77,7 +78,7 @@ export function Sidebar(): React.ReactNode {
   )
 }
 
-export function AppLayout({ children }: { children: React.ReactNode }): React.ReactNode {
+export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen bg-zinc-50 dark:bg-zinc-950">
       <Sidebar />

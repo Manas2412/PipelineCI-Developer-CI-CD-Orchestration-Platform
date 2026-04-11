@@ -1,3 +1,4 @@
+'use client'
 import React, { useState, useEffect, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { formatDistanceToNow } from 'date-fns'
