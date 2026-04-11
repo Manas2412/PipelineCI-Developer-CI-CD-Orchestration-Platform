@@ -1,4 +1,4 @@
-import { create } from "domain"
+// API service utilities for PipelineCI
 import type {
     ApiResponse,
     PaginatedResponse,
@@ -22,7 +22,7 @@ async function apiFetch<T>(
     path: string,
     options: RequestInit = {}
 ): Promise<T> {
-    const token = typeof window! == 'undefined' ? localStorage.getItem('token') : null
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
 
     const res = await fetch(`${BASE}${path}`, {
         ...options,
@@ -123,24 +123,24 @@ export const runsApi = {
         pageSize?: number
     }) => {
         const qs = new URLSearchParams()
-        if(params.pipelineId) qs.set('pipelineId', params.pipelineId)
-        if(params.projectId) qs.set('projectId', params.projectId)
-        if(params.page) qs.set('page', params.page.toString())
-        if(params.pageSize) qs.set('pageSize', params.pageSize.toString())
+        if (params.pipelineId) qs.set('pipelineId', params.pipelineId)
+        if (params.projectId) qs.set('projectId', params.projectId)
+        if (params.page) qs.set('page', params.page.toString())
+        if (params.pageSize) qs.set('pageSize', params.pageSize.toString())
 
         return apiFetch<PaginatedResponse<RunWithSteps>>(`/api/runs?${qs.toString()}`)
     },
 
-    get: (id:string) => apiFetch<any>(`/api/runs/${id}`),
+    get: (id: string) => apiFetch<any>(`/api/runs/${id}`),
 
     stats: (id: string) => apiFetch<any>(`/api/runs/${id}/stats`),
 
-    trigger: (body: TriggerRunRequest) => apiFetch<{runId: string}>(`/api/runs`,{
+    trigger: (body: TriggerRunRequest) => apiFetch<{ runId: string }>(`/api/runs`, {
         method: 'POST',
         body: JSON.stringify(body)
     }),
 
-    conscel: (id: string) => apiFetch<void>(`/api/runs/${id}/cancel`, {
+    cancel: (id: string) => apiFetch<void>(`/api/runs/${id}/cancel`, {
         method: 'POST'
     })
 }
