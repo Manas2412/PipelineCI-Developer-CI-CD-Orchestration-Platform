@@ -5,13 +5,13 @@ import { useQuery } from '@tanstack/react-query'
 import { formatDistanceToNow } from 'date-fns'
 import { Plus, GitBranch, Play, Clock } from 'lucide-react'
 import { projectApi, runsApi } from '@/lib/api'
-import { DEFAULT_ORG_ID } from '@/lib/org'
+import { useAuthStore } from '@/lib/store'
 import { AppLayout } from '@/components/layout'
 import { StatusBadge, Card, Spinner, Empty, Button, durationMs, formatDuration } from '@/components/ui'
 
 export default function DashboardPage() {
-  // In a real app orgId comes from the auth context
-  const ORG_ID = DEFAULT_ORG_ID
+  const user   = useAuthStore((s) => s.user)
+  const ORG_ID = user?.orgId ?? ''
 
   const { data: projects, isLoading } = useQuery({
     queryKey: ['projects', ORG_ID],

@@ -7,12 +7,14 @@ import { formatDistanceToNow } from 'date-fns'
 import { Plus, GitBranch, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { projectApi } from '@/lib/api'
+import { useAuthStore } from '@/lib/store'
 import { AppLayout } from '@/components/layout'
 import { Card, Spinner, Empty, Button, StatusBadge } from '@/components/ui'
 import { useQueryClient, useMutation } from '@tanstack/react-query'
 
 export default function ProjectsPage() {
-  const ORG_ID = 'default-org'
+  const user   = useAuthStore((s) => s.user)
+  const ORG_ID = user?.orgId ?? ''
   const qc     = useQueryClient()
 
   const { data: projects, isLoading } = useQuery({

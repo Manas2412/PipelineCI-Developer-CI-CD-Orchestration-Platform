@@ -68,19 +68,29 @@ export async function projectsRoutes(app: FastifyInstance) {
 
     const webhookSecret = crypto.randomBytes(32).toString('hex')
 
-    const project = await prisma.project.create({
-      data: { ...body, webhookSecret },
-    })
+    try {
+      const project = await prisma.project.create({
+        data: { ...body, webhookSecret },
+      })
 
-    await prisma.auditLog.create({
-      data: {
-        actorId: userId, action: 'project.created',
-        resourceId: project.id, resourceType: 'Project',
-        metadata: { name: body.name, description: body.description, repoUrl: body.repoUrl },
-      },
-    })
+      await prisma.auditLog.create({
+        data: {
+          actorId: userId, action: 'project.created',
+          resourceId: project.id, resourceType: 'Project',
+          metadata: { name: body.name, description: body.description, repoUrl: body.repoUrl },
+        },
+      })
 
-    return reply.status(201).send({ success: true, data: project })
+      return reply.status(201).send({ success: true, data: project })
+    } catch (err: any) {
+      if (err.code === 'P2002') {
+        return reply.status(409).send({
+          success: false,
+          error: `A project with slug "${body.slug}" already exists in this organization.`
+        })
+      }
+      throw err
+    }
   })
 
   // PATCH /api/projects/:id
