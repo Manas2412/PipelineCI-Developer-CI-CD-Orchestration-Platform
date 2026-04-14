@@ -93,13 +93,25 @@ export async function authRoutes(app: FastifyInstance) {
       return reply.status(401).send({ success: false, error: 'Invalid credentials' })
     }
 
-    const orgId = user.memberships[0]?.orgId ?? null
+    // Auto-create a personal org for legacy users who registered before the org flow was added
+    let orgId = user.memberships[0]?.orgId ?? null
+    if (!orgId) {
+      const displayName = user.name ?? user.email.split('@')[0] ?? 'personal'
+      const orgSlug = displayName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/, '') || 'personal'
+      const newOrg = await prisma.organization.create({
+        data: { name: `${displayName}'s Org`, slug: `${orgSlug}-${Date.now()}` },
+      })
+      await prisma.orgMember.create({
+        data: { userId: user.id, orgId: newOrg.id, role: 'OWNER' },
+      })
+      orgId = newOrg.id
+    }
 
     const token = app.jwt.sign({
       userId: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
+      email:  user.email,
+      name:   user.name,
+      role:   user.role,
       orgId,
     }, { expiresIn: '7d' })
 
@@ -108,10 +120,10 @@ export async function authRoutes(app: FastifyInstance) {
       data: {
         token,
         user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
+          id:        user.id,
+          email:     user.email,
+          name:      user.name,
+          role:      user.role,
           avatarUrl: user.avatarUrl,
           orgId,
         },

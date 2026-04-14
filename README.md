@@ -106,3 +106,139 @@ pipelineci/
 │       ├── lib/store.ts
 │       └── lib/hooks.ts
 Built with ❤️ for developers who love automation.
+
+
+
+
+
+# PipelineCI
+
+A self-hosted CI/CD orchestration platform. Define pipelines in YAML, run jobs in isolated Docker containers across a worker pool, and watch logs stream live.
+
+## Stack
+
+| Layer | Tech |
+|---|---|
+| Frontend | Next.js 14 (App Router) · TypeScript · Tailwind · TanStack Query · React Flow · Monaco |
+| API | Fastify · TypeScript · Zod · JWT |
+| Database | PostgreSQL · Prisma ORM |
+| Queue | Redis Streams (job bus) · Redis pub/sub (live logs) |
+| Runner | Node.js · Dockerode |
+| Monorepo | Turborepo · pnpm workspaces |
+
+## Structure
+
+```
+pipelineci/
+├── apps/
+│   ├── api/          Fastify REST API + DAG scheduler
+│   ├── runner/       Docker job runner process
+│   └── web/          Next.js dashboard
+└── packages/
+    ├── db/           Prisma schema + client
+    ├── redis/        Shared Redis client + key helpers
+    ├── tsconfig/     Shared TypeScript configs
+    └── types/        Shared TypeScript interfaces
+```
+
+## Getting started
+
+### Prerequisites
+- Node.js ≥ 20
+- pnpm ≥ 8
+- Docker (for infra and job execution)
+
+### 1. Clone and install
+
+```bash
+git clone https://github.com/Manas2412/PipelineCI-Developer-CI-CD-Orchestration-Platform
+cd PipelineCI-Developer-CI-CD-Orchestration-Platform
+pnpm install
+```
+
+### 2. Start infrastructure
+
+```bash
+pnpm infra:up        # starts Postgres + Redis via docker-compose
+```
+
+### 3. Set up environment
+
+```bash
+cp .env.example .env
+# Edit .env — at minimum set JWT_SECRET
+```
+
+### 4. Run database migrations
+
+```bash
+pnpm db:migrate      # runs prisma migrate dev
+pnpm db:generate     # generates Prisma client
+```
+
+### 5. Start everything
+
+```bash
+# Terminal 1 — API + Web (runs in parallel via Turbo)
+pnpm dev
+
+# Terminal 2 — Runner process
+pnpm runner
+```
+
+Open [http://localhost:3000](http://localhost:3000) and register an account.
+
+## Pipeline YAML format
+
+```yaml
+name: Build and Deploy
+
+env:
+  NODE_ENV: production
+
+steps:
+  - name: install
+    image: node:20-alpine
+    commands:
+      - npm ci
+
+  - name: test
+    image: node:20-alpine
+    dependsOn: [install]
+    commands:
+      - npm test
+
+  - name: build
+    image: node:20-alpine
+    dependsOn: [install]      # parallel with test
+    commands:
+      - npm run build
+
+  - name: deploy
+    image: bitnami/kubectl:latest
+    dependsOn: [test, build]  # fan-in gate
+    commands:
+      - kubectl rollout restart deploy/my-app
+```
+
+`dependsOn` builds a DAG — steps with satisfied dependencies run in parallel across the runner pool.
+
+## Key architectural decisions
+
+- **Redis Streams** as the job bus — consumer groups ensure each job is picked up by exactly one runner. Dead-letter handling via `XPENDING` + re-delivery on restart.
+- **Redis pub/sub** for live log streaming — runner publishes each stdout/stderr line; the API SSE endpoint subscribes and forwards to the browser in real-time. Historical logs are persisted to Postgres and replayed on reconnect.
+- **Distributed step lock** — `SET lock:step:<id> NX EX 300` prevents two runners racing the same job during high-concurrency scenarios.
+- **DAG self-relation** on `StepRun` — dependency edges stored in Postgres. Scheduler queries completed deps on every step-complete event to determine which steps to unblock next.
+- **Turborepo shared packages** — `@pipelineci/types` is imported by both the API and the frontend, giving end-to-end type safety with zero duplication.
+
+## Webhook setup (GitHub)
+
+1. Go to your GitHub repo → Settings → Webhooks → Add webhook
+2. Payload URL: `http://your-server:3001/api/projects/<projectId>/webhook`
+3. Content type: `application/json`
+4. Secret: copy from Project Settings → Webhook secret
+5. Events: select **Push** and/or **Pull requests**
+
+## License
+
+MIT

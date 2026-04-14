@@ -1,11 +1,11 @@
 import { redis, Keys } from "redis"
-import type { jobMessage, StepCompleteMessage } from "types"
+import type { JobMessage, StepCompleteMessage } from 'types'
 
 // ─────────────────────────────────────────────────────────────
 // Enqueue a step for a runner to pick up
 // ─────────────────────────────────────────────────────────────
 
-export async function enqueueJob(msg: jobMessage): Promise<string> {
+export async function enqueueJob(msg: JobMessage): Promise<string> {
     const streamId = await redis.xadd(
         Keys.jobStream(),
         '*',  // Auto-generated stream ID

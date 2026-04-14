@@ -1,17 +1,17 @@
 'use client'
 
-import React from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { formatDistanceToNow } from 'date-fns'
 import { Plus, GitBranch, Play, Clock } from 'lucide-react'
-import { projectApi, runsApi } from '../../../lib/api' 
-import { AppLayout } from '../../../components/layout'
-import { StatusBadge, Card, Spinner, Empty, Button, durationMs, formatDuration } from '../../../components/ui'
+import { projectApi, runsApi } from '@/lib/api'
+import { DEFAULT_ORG_ID } from '@/lib/org'
+import { AppLayout } from '@/components/layout'
+import { StatusBadge, Card, Spinner, Empty, Button, durationMs, formatDuration } from '@/components/ui'
 
-export default function DashboardPage(): React.ReactNode {
+export default function DashboardPage() {
   // In a real app orgId comes from the auth context
-  const ORG_ID = 'default-org'
+  const ORG_ID = DEFAULT_ORG_ID
 
   const { data: projects, isLoading } = useQuery({
     queryKey: ['projects', ORG_ID],

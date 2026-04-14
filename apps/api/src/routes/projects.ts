@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import crypto from 'node:crypto'
-import { prisma, RunStatus } from 'db'
+import { prisma, RunStatus, RunnerStatus } from 'db'
 import { redis, Keys } from 'redis'
 import { parsePipelineYaml, buildDag } from '../lib/dag'
 import { kickOffRun } from '../lib/scheduler'
@@ -11,11 +11,11 @@ import { kickOffRun } from '../lib/scheduler'
 // ─────────────────────────────────────────────────────────────
 
 const createProjectSchema = z.object({
-  name: z.string().min(1),
-  slug: z.string().min(1).regex(/^[a-z0-9-]+$/, 'slug must be lowercase alphanumeric with hyphens'),
-  repoUrl: z.string().url().optional(),
+  name:        z.string().min(1),
+  slug:        z.string().min(1).regex(/^[a-z0-9-]+$/, 'slug must be lowercase alphanumeric with hyphens'),
+  repoUrl:     z.string().url().optional(),
   description: z.string().optional(),
-  orgId: z.string().uuid(),
+  orgId:       z.string().uuid(),
 })
 
 export async function projectsRoutes(app: FastifyInstance) {
@@ -27,7 +27,7 @@ export async function projectsRoutes(app: FastifyInstance) {
     if (!orgId) return reply.status(400).send({ success: false, error: 'orgId required' })
 
     const projects = await prisma.project.findMany({
-      where: { orgId },
+      where:   { orgId },
       orderBy: { createdAt: 'desc' },
       include: {
         _count: { select: { pipelines: true, runs: true } },
@@ -42,16 +42,16 @@ export async function projectsRoutes(app: FastifyInstance) {
     const { id } = req.params as { id: string }
 
     const project = await prisma.project.findUniqueOrThrow({
-      where: { id },
+      where:   { id },
       include: {
         pipelines: {
-          where: { isActive: true },
+          where:   { isActive: true },
           orderBy: { createdAt: 'desc' },
           include: {
             runs: {
-              take: 1,
+              take:    1,
               orderBy: { createdAt: 'desc' },
-              select: { id: true, status: true, createdAt: true, finishedAt: true },
+              select:  { id: true, status: true, createdAt: true, finishedAt: true },
             },
           },
         },
@@ -76,8 +76,7 @@ export async function projectsRoutes(app: FastifyInstance) {
       data: {
         actorId: userId, action: 'project.created',
         resourceId: project.id, resourceType: 'Project',
-        metadata: {},
-
+        metadata: { name: body.name, description: body.description, repoUrl: body.repoUrl },
       },
     })
 
@@ -86,21 +85,21 @@ export async function projectsRoutes(app: FastifyInstance) {
 
   // PATCH /api/projects/:id
   app.patch('/:id', async (req, reply) => {
-    const { id } = req.params as { id: string }
+    const { id }     = req.params as { id: string }
     const { userId } = req.user as { userId: string }
 
     const body = z.object({
-      name: z.string().min(1).optional(),
+      name:        z.string().min(1).optional(),
       description: z.string().optional(),
-      repoUrl: z.string().url().optional().or(z.literal('')),
+      repoUrl:     z.string().url().optional().or(z.literal('')),
     }).parse(req.body)
 
     const project = await prisma.project.update({
       where: { id },
       data: {
-        ...(body.name ? { name: body.name } : {}),
+        ...(body.name        ? { name: body.name }               : {}),
         ...(body.description !== undefined ? { description: body.description } : {}),
-        ...(body.repoUrl !== undefined ? { repoUrl: body.repoUrl || null } : {}),
+        ...(body.repoUrl     !== undefined ? { repoUrl: body.repoUrl || null }  : {}),
       },
     })
 
@@ -117,7 +116,7 @@ export async function projectsRoutes(app: FastifyInstance) {
 
   // DELETE /api/projects/:id
   app.delete('/:id', async (req, reply) => {
-    const { id } = req.params as { id: string }
+    const { id }     = req.params as { id: string }
     const { userId } = req.user as { userId: string }
 
     await prisma.project.delete({ where: { id } })
@@ -126,7 +125,7 @@ export async function projectsRoutes(app: FastifyInstance) {
       data: {
         actorId: userId, action: 'project.deleted',
         resourceId: id, resourceType: 'Project',
-        metadata: {},
+        metadata: {}
       },
     })
 
@@ -142,7 +141,7 @@ export async function projectsRoutes(app: FastifyInstance) {
     const project = await prisma.project.findUniqueOrThrow({ where: { id } })
 
     // Verify signature
-    const sig = req.headers['x-hub-signature-256'] as string | undefined
+    const sig  = req.headers['x-hub-signature-256'] as string | undefined
     const body = (req as unknown as { rawBody: Buffer }).rawBody
 
     if (sig && body) {
@@ -156,17 +155,17 @@ export async function projectsRoutes(app: FastifyInstance) {
       }
     }
 
-    const payload = req.body as Record<string, unknown>
-    const eventType = req.headers['x-github-event'] as string ?? 'push'
-    const commitSha = (payload?.after as string) ?? undefined
-    const branch = ((payload?.ref as string) ?? '').replace('refs/heads/', '')
+    const payload    = req.body as Record<string, unknown>
+    const eventType  = req.headers['x-github-event'] as string ?? 'push'
+    const commitSha  = (payload?.after as string) ?? undefined
+    const branch     = ((payload?.ref as string) ?? '').replace('refs/heads/', '')
 
     // Store the raw event
     const event = await prisma.webHookEvent.create({
       data: {
-        source: 'github',
+        source:    'github',
         eventType,
-        payload: payload as object,
+        payload:   payload as object,
         signature: sig,
         projectId: id,
       },
@@ -176,8 +175,8 @@ export async function projectsRoutes(app: FastifyInstance) {
     const pipelines = await prisma.pipeline.findMany({
       where: {
         projectId: id,
-        isActive: true,
-        trigger: eventType === 'push' ? 'PUSH' : 'PULL_REQUEST',
+        isActive:  true,
+        trigger:   eventType === 'push' ? 'PUSH' : 'PULL_REQUEST',
         OR: [
           { branch: null },
           { branch },
@@ -192,9 +191,9 @@ export async function projectsRoutes(app: FastifyInstance) {
       const run = await prisma.$transaction(async (tx) => {
         const newRun = await tx.run.create({
           data: {
-            pipelineId: pipeline.id,
-            projectId: id,
-            status: RunStatus.PENDING,
+            pipelineId:  pipeline.id,
+            projectId:   id,
+            status:      RunStatus.PENDING,
             triggerType: 'PUSH',
             triggeredBy: 'webhook',
             commitSha,
@@ -204,13 +203,32 @@ export async function projectsRoutes(app: FastifyInstance) {
 
         await tx.stepRun.createMany({
           data: def.steps.map((step) => ({
-            runId: newRun.id,
-            name: step.name,
-            status: RunStatus.PENDING,
-            image: step.image,
+            runId:    newRun.id,
+            name:     step.name,
+            status:   RunStatus.PENDING,
+            image:    step.image,
             commands: step.commands,
           })),
         })
+
+        // Wire up DAG self-relations
+        const createdSteps = await tx.stepRun.findMany({
+          where:  { runId: newRun.id },
+          select: { id: true, name: true },
+        })
+        const nameToId = Object.fromEntries(createdSteps.map((s) => [s.name, s.id]))
+
+        for (const step of def.steps) {
+          if (!step.dependsOn || step.dependsOn.length === 0) continue
+          await tx.stepRun.update({
+            where: { id: nameToId[step.name] },
+            data: {
+              dependsOn: {
+                connect: step.dependsOn.map((dep) => ({ id: nameToId[dep] })),
+              },
+            },
+          })
+        }
 
         return newRun
       })
@@ -220,7 +238,7 @@ export async function projectsRoutes(app: FastifyInstance) {
 
     await prisma.webHookEvent.update({
       where: { id: event.id },
-      data: { status: pipelines.length > 0 ? 'PROCESSED' : 'IGNORED', processedAt: new Date() },
+      data:  { status: pipelines.length > 0 ? 'PROCESSED' : 'IGNORED', processedAt: new Date() },
     })
 
     return reply.send({ success: true, triggeredRuns: pipelines.length })
@@ -252,15 +270,15 @@ export async function runnersRoutes(app: FastifyInstance) {
   // POST /api/runners/register  — runner agent calls this on startup
   app.post('/register', async (req, reply) => {
     const body = z.object({
-      label: z.string(),
-      capacity: z.number().int().min(1).max(32).default(4),
-      hostname: z.string().optional(),
+      label:     z.string(),
+      capacity:  z.number().int().min(1).max(32).default(4),
+      hostname:  z.string().optional(),
       ipAddress: z.string().optional(),
-      version: z.string().optional(),
+      version:   z.string().optional(),
     }).parse(req.body)
 
     const runner = await prisma.runner.create({
-      data: { ...body, status: 'ONLINE', lastHeartbeat: new Date() },
+      data: { ...body, status: RunnerStatus.ONLINE, lastHeartbeat: new Date() },
     })
 
     // Set heartbeat key
@@ -277,7 +295,7 @@ export async function runnersRoutes(app: FastifyInstance) {
       redis.set(Keys.runnerAlive(id), '1', 'EX', 30),
       prisma.runner.update({
         where: { id },
-        data: { lastHeartbeat: new Date(), status: 'ONLINE' },
+        data:  { lastHeartbeat: new Date(), status: RunnerStatus.ONLINE },
       }),
     ])
 

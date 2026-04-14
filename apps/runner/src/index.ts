@@ -50,7 +50,7 @@ async function sendHeartbeat() {
   await redis.set(Keys.runnerAlive(runnerId), '1', 'EX', 30)
   await prisma.runner.update({
     where: { id: runnerId },
-    data:  { lastHeartbeat: new Date() },
+    data:  { lastHeartbeat: new Date(), status: RunnerStatus.ONLINE },
   })
 }
 
@@ -70,10 +70,9 @@ async function consumeJobs() {
 
       if (!results || results.length === 0) continue
 
-      const firstResult = results[0]
-      if (!firstResult) continue
-
-      const [, messages] = firstResult
+      const first = results[0]
+      if (!first) continue
+      const [, messages] = first
 
       for (const [msgId, fields] of messages) {
         const job = parseJobMessage(fields)
@@ -294,14 +293,12 @@ async function recoverPending() {
     'STREAMS', Keys.jobStream(), '0'
   ) as Array<[string, Array<[string, string[]]>]> | null
 
-  if (!pending || pending.length === 0 || !pending[0]) return
+  const pendingFirst = pending?.[0]
+  if (!pendingFirst || pendingFirst[1].length === 0) return
 
-  const [, messages] = pending[0]
-  if (messages.length === 0) return
+  console.log(`[Runner] Recovering ${pendingFirst[1].length} pending job(s)`)
 
-  console.log(`[Runner] Recovering ${messages.length} pending job(s)`)
-
-  for (const [msgId, fields] of messages) {
+  for (const [msgId, fields] of pendingFirst[1]) {
     const job = parseJobMessage(fields)
     try {
       await executeStep(job)
@@ -314,22 +311,21 @@ async function recoverPending() {
 }
 
 function parseJobMessage(fields: string[]): JobMessage {
-  const obj: Record<string, string | undefined> = {}
-  for (let i = 0; i < fields.length; i += 2) {
+  const obj: Record<string, string> = {}
+  for (let i = 0; i < fields.length - 1; i += 2) {
     const key = fields[i]
-    if (key !== undefined) {
-      obj[key] = fields[i + 1]
-    }
+    const val = fields[i + 1]
+    if (key !== undefined && val !== undefined) obj[key] = val
   }
 
   return {
-    runId:          obj.runId ?? '',
-    stepRunId:      obj.stepRunId ?? '',
-    stepName:       obj.stepName ?? '',
-    image:          obj.image ?? '',
-    commands:       JSON.parse(obj.commands ?? '[]'),
-    env:            JSON.parse(obj.env ?? '{}'),
-    timeoutSeconds: Number(obj.timeoutSeconds ?? '0'),
+    runId:          obj['runId']          ?? '',
+    stepRunId:      obj['stepRunId']      ?? '',
+    stepName:       obj['stepName']       ?? '',
+    image:          obj['image']          ?? '',
+    commands:       JSON.parse(obj['commands'] ?? '[]'),
+    env:            JSON.parse(obj['env']      ?? '{}'),
+    timeoutSeconds: Number(obj['timeoutSeconds'] ?? 0),
   }
 }
 

@@ -1,5 +1,4 @@
 import Fastify from 'fastify'
-import type { FastifyRequest, FastifyReply } from 'fastify'
 import cors from '@fastify/cors'
 import jwt from '@fastify/jwt'
 import { authRoutes }                    from './routes/auth'
@@ -10,11 +9,6 @@ import { projectsRoutes, runnersRoutes } from './routes/projects'
 import { ensureConsumerGroup }           from './lib/queue'
 import { startScheduler }                from './lib/scheduler'
 
-declare module 'fastify' {
-  export interface FastifyInstance {
-    authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>
-  }
-}
 
 const app = Fastify({
   logger: {
