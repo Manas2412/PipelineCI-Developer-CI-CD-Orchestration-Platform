@@ -1,3 +1,7 @@
+import path from 'path';
+import dotenv from 'dotenv';
+dotenv.config({ path: path.join(__dirname, '../../../.env') });
+
 import Docker from 'dockerode'
 import { redis, Keys } from 'redis'
 import { prisma, RunStatus, RunnerStatus } from 'db'

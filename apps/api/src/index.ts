@@ -1,6 +1,11 @@
+import path from 'path';
+import dotenv from 'dotenv';
+dotenv.config({ path: path.join(__dirname, '../../../.env') });
+
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import jwt from '@fastify/jwt'
+// ... rest of imports
 import { authRoutes } from './routes/auth'
 import { pipelineRoutes as pipelinesRoutes } from './routes/pipeline'
 import { runsRoutes } from './routes/runs'
@@ -25,8 +30,16 @@ const app = Fastify({
 // ─────────────────────────────────────────────────────────────
 
 await app.register(cors, {
-  origin: process.env.FRONTEND_URL ?? 'http://localhost:3000',
+  origin: (origin, cb) => {
+    const allowed = ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://0.0.0.0:3000'];
+    if (!origin || allowed.includes(origin) || process.env.NODE_ENV === 'development') {
+      cb(null, true);
+      return;
+    }
+    cb(new Error('Not allowed by CORS'), false);
+  },
   credentials: true,
+  methods: ['GET', 'PUT', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
 })
 
 await app.register(jwt, {
