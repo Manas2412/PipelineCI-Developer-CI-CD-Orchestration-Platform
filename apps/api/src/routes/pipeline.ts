@@ -65,40 +65,56 @@ export async function pipelineRoutes(app: FastifyInstance) {
 
   // POST /api/pipelines
   app.post('/', async (req, reply) => {
-    const body = createSchema.parse(req.body)
+    try {
+      const body = createSchema.parse(req.body)
 
-    // Validate YAML before saving
-    const def = parsePipelineYaml(body.yamlConfig) // throws if invalid
-    buildDag(def) // throws if cycle
+      // Validate YAML before saving
+      const def = parsePipelineYaml(body.yamlConfig)
+      buildDag(def)
 
-    const pipeline = await prisma.pipeline.create({
-      data: body
-    })
+      const pipeline = await prisma.pipeline.create({
+        data: body
+      })
 
-    return reply.status(201).send({
-      success: true,
-      data: pipeline
-    })
+      return reply.status(201).send({
+        success: true,
+        data: pipeline
+      })
+    } catch (err: any) {
+      return reply.status(400).send({
+        success: false,
+        error: err.message || 'Invalid pipeline configuration'
+      })
+    }
   })
 
   // PATCH /api/pipelines/:id
   app.patch('/:id', async (req, reply) => {
     const { id } = req.params as { id: string }
-    const body = updateSchema.parse(req.body)
+    
+    try {
+      const body = updateSchema.parse(req.body)
 
-    if (body.yamlConfig) {
-      const def = parsePipelineYaml(body.yamlConfig)
-      buildDag(def)
+      if (body.yamlConfig) {
+        const def = parsePipelineYaml(body.yamlConfig)
+        buildDag(def)
+      }
+
+      const pipeline = await prisma.pipeline.update({
+        where: { id },
+        data: body
+      })
+
+      return reply.send({
+        success: true,
+        data: pipeline
+      })
+    } catch (err: any) {
+      return reply.status(400).send({
+        success: false,
+        error: err.message || 'Failed to update pipeline'
+      })
     }
-
-    const pipeline = await prisma.pipeline.update({
-      where: { id },
-      data: body
-    })
-    return reply.send({
-      success: true,
-      data: pipeline
-    })
   })
 
   // DELETE /api/pipelines/:id

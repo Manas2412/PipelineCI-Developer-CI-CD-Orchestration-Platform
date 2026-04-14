@@ -1,13 +1,13 @@
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import jwt from '@fastify/jwt'
-import { authRoutes }                    from './routes/auth'
+import { authRoutes } from './routes/auth'
 import { pipelineRoutes as pipelinesRoutes } from './routes/pipeline'
-import { runsRoutes }                    from './routes/runs'
-import { logsRoutes }                    from './routes/logs'
+import { runsRoutes } from './routes/runs'
+import { logsRoutes } from './routes/logs'
 import { projectsRoutes, runnersRoutes } from './routes/projects'
-import { ensureConsumerGroup }           from './lib/queue'
-import { startScheduler }                from './lib/scheduler'
+import { ensureConsumerGroup } from './lib/queue'
+import { startScheduler } from './lib/scheduler'
 
 
 const app = Fastify({
@@ -42,16 +42,40 @@ app.decorate('authenticate', async (req: any, reply: any) => {
   }
 })
 
+// Global error handler
+app.setErrorHandler((error: any, request, reply) => {
+  if (error.validation) {
+    return reply.status(400).send({
+      success: false,
+      error: error.message
+    })
+  }
+
+  // Handle Prisma errors
+  if (error.code === 'P2025') {
+    return reply.status(404).send({
+      success: false,
+      error: 'Resource not found'
+    })
+  }
+
+  app.log.error(error)
+  reply.status(500).send({
+    success: false,
+    error: 'Internal Server Error'
+  })
+})
+
 // ─────────────────────────────────────────────────────────────
 // Routes
 // ─────────────────────────────────────────────────────────────
 
-await app.register(authRoutes,      { prefix: '/api/auth'      })
-await app.register(projectsRoutes,  { prefix: '/api/projects'  })
+await app.register(authRoutes, { prefix: '/api/auth' })
+await app.register(projectsRoutes, { prefix: '/api/projects' })
 await app.register(pipelinesRoutes, { prefix: '/api/pipelines' })
-await app.register(runsRoutes,      { prefix: '/api/runs'      })
-await app.register(logsRoutes,      { prefix: '/api/logs'      })
-await app.register(runnersRoutes,   { prefix: '/api/runners'   })
+await app.register(runsRoutes, { prefix: '/api/runs' })
+await app.register(logsRoutes, { prefix: '/api/logs' })
+await app.register(runnersRoutes, { prefix: '/api/runners' })
 
 // Health check
 app.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }))

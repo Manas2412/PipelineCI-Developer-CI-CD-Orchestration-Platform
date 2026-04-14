@@ -68,13 +68,16 @@ export type DagGraph = Record<string, DagNode>
 // ─────────────────────────────────────────────────────────────
 
 export interface JobMessage {
-    runId: string
-    stepRunId: string
-    stepName: string
-    image: string
-    commands: string[]
-    env: Record<string,string>
+    runId:          string
+    stepRunId:      string
+    stepName:       string
+    image:          string
+    commands:       string[]
+    env:            Record<string,string>
     timeoutSeconds: number
+    repoUrl?:       string
+    branch?:        string
+    commitSha?:     string
 }
 
 export interface StepCompleteMessage {

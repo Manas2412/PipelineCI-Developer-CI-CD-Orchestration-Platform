@@ -100,6 +100,7 @@ export async function handleStepComplete(msg: {
         where: {id:runId},
         include: {
             pipeline: {select: {yamlConfig: true}},
+            project: {select: {repoUrl: true}},
             stepRuns: {select: {id:true, name:true, status: true}},
         },
     })
@@ -168,12 +169,15 @@ export async function handleStepComplete(msg: {
 
         const job: JobMessage = {
             runId, 
-            stepRunId: stepRun.id,
+            stepRunId:      stepRun.id,
             stepName,
-            image: stepDef.image,
-            commands: stepDef.commands,
-            env: {...(def.env ?? {}), ...(stepDef.env ?? {})},
+            image:          stepDef.image,
+            commands:       stepDef.commands,
+            env:            {...(def.env ?? {}), ...(stepDef.env ?? {})},
             timeoutSeconds: stepDef.timeout ?? 600,
+            repoUrl:        run.project.repoUrl ?? undefined,
+            branch:         run.branch ?? undefined,
+            commitSha:      run.commitSha ?? undefined,
         }
         await enqueueJob(job)
     }
@@ -190,6 +194,7 @@ export async function kickOffRun(runId: string): Promise<void> {
         where: {id: runId},
         include: {
             pipeline: {select: {yamlConfig: true}},
+            project: {select: {repoUrl: true}},
             stepRuns: {select : {id: true, name: true, status: true}},
         },
     })
@@ -217,12 +222,15 @@ export async function kickOffRun(runId: string): Promise<void> {
 
         const job: JobMessage = {
             runId,
-            stepRunId: stepRun.id,
+            stepRunId:      stepRun.id,
             stepName,
-            image: stepDef.image,
-            commands: stepDef.commands,
-            env: {...(def.env ?? {}), ...(stepDef.env ?? {})},
+            image:          stepDef.image,
+            commands:       stepDef.commands,
+            env:            {...(def.env ?? {}), ...(stepDef.env ?? {})},
             timeoutSeconds: stepDef.timeout ?? 600,
+            repoUrl:        run.project.repoUrl ?? undefined,
+            branch:         run.branch ?? undefined,
+            commitSha:      run.commitSha ?? undefined,
         }
         await enqueueJob(job)
     }

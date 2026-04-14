@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import ReactFlow, {
   Background,
@@ -15,9 +16,9 @@ import ReactFlow, {
 import 'reactflow/dist/style.css'
 import { toast } from 'sonner'
 import { Save, Play, CheckCircle2, XCircle, AlertCircle } from 'lucide-react'
-import { usePipeline, useUpdatePipeline, useValidatePipeline, useTriggerRun } from '../../../../lib/hooks'
-import { AppLayout } from '../../../../components/layout'
-import { Spinner, Button } from '../../../../components/ui'
+import { usePipeline, useUpdatePipeline, useValidatePipeline, useTriggerRun } from '../../../../../lib/hooks'
+import { AppLayout } from '../../../../../components/layout'
+import { Spinner, Button, Card } from '../../../../../components/ui'
 import type { DagGraph } from 'types'
 
 // Monaco must be loaded client-side only
@@ -181,8 +182,37 @@ export default function PipelineEditorPage(): React.ReactNode {
     )
   }
 
+  if (!pipeline) {
+    return (
+      <AppLayout>
+        <div className="flex items-center gap-2 text-sm text-zinc-400 mb-6">
+          <Link href="/projects" className="hover:text-zinc-200">Projects</Link>
+          <span>/</span>
+          <span className="text-zinc-200">Error</span>
+        </div>
+        <Card className="text-center py-12">
+          <p className="text-sm text-zinc-400 mb-4">Pipeline not found or error loading data</p>
+          <Link href="/projects">
+            <Button variant="secondary" size="sm">Back to projects</Button>
+          </Link>
+        </Card>
+      </AppLayout>
+    )
+  }
+
   return (
     <AppLayout>
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 text-sm text-zinc-400 mb-6">
+        <Link href="/projects" className="hover:text-zinc-200">Projects</Link>
+        <span>/</span>
+        <Link href={`/projects/${pipeline.projectId}`} className="hover:text-zinc-200">
+          {pipeline.projectId.slice(0, 8)}...
+        </Link>
+        <span>/</span>
+        <span className="text-zinc-200">{pipeline.name}</span>
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div>

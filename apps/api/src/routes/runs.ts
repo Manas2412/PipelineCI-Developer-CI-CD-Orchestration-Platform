@@ -6,7 +6,7 @@ import { kickOffRun } from '../lib/scheduler'
 import { setCancelFlag } from '../lib/queue'
 
 const triggerSchema = z.object({
-  pipelineId: z.string().cuid(),
+  pipelineId: z.string().uuid(),
   commitSha:  z.string().optional(),
   commitMsg:  z.string().optional(),
   branch:     z.string().optional(),

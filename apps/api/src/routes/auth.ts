@@ -132,12 +132,9 @@ export async function authRoutes(app: FastifyInstance) {
   })
 
   // GET /api/auth/me (protected)
-  app.get('/me', async (req, reply) => {
-    const payload = req.user as { userId: string } | undefined
-    if (!payload?.userId) {
-      return reply.status(401).send({ success: false, error: 'Unauthorized' })
-    }
-
+  app.get('/me', { preHandler: app.authenticate }, async (req, reply) => {
+    const payload = req.user as { userId: string }
+    
     const user = await prisma.user.findUniqueOrThrow({
       where: { id: payload.userId },
       include: { memberships: { take: 1, orderBy: { joinedAt: 'asc' } } },

@@ -124,6 +124,33 @@ async function executeStep(job: JobMessage) {
   // Pull image if needed (no-op if already present)
   await pullImage(job.image)
 
+  // 1. Create/Ensure a shared volume for this run's workspace
+  // This allows files to persist between steps of the same run
+  const volumeName = `pipelineci-run-${job.runId}`
+  await docker.createVolume({ Name: volumeName }).catch(() => {})
+
+  // 2. Clone the repo if repoUrl is provided (and it's the first step or folder is empty)
+  // In a real system we'd check if it's already cloned, but for now we clone if repoUrl exists.
+  if (job.repoUrl) {
+    console.log(`[Runner] Cloning ${job.repoUrl} into volume ${volumeName}`)
+    await pullImage('alpine/git')
+    const gitContainer = await docker.createContainer({
+      Image: 'alpine/git',
+      Cmd: ['clone', '--depth', '1', '--branch', job.branch || 'main', job.repoUrl, '.'],
+      WorkingDir: '/workspace',
+      HostConfig: {
+        Binds: [`${volumeName}:/workspace`],
+      },
+    })
+    await gitContainer.start()
+    const { StatusCode } = await gitContainer.wait()
+    await gitContainer.remove()
+    
+    if (StatusCode !== 0 && StatusCode !== 128) { // 128 often means already exists
+       console.warn(`[Runner] Git clone exited with ${StatusCode}`)
+    }
+  }
+
   // Build the shell script from commands array
   const script = job.commands.join('\n')
 
@@ -131,11 +158,13 @@ async function executeStep(job: JobMessage) {
   const container = await docker.createContainer({
     Image: job.image,
     Cmd:   ['sh', '-ec', script],
+    WorkingDir: '/workspace',
     Env:   Object.entries(job.env).map(([k, v]) => `${k}=${v}`),
     HostConfig: {
       AutoRemove: false,
-      Memory:     512 * 1024 * 1024,   // 512MB limit
+      Memory:     1024 * 1024 * 1024,   // 1GB limit
       NanoCpus:   1_000_000_000,        // 1 CPU
+      Binds:      [`${volumeName}:/workspace`],
     },
     Labels: {
       'pipelineci.runId':     job.runId,
@@ -326,6 +355,9 @@ function parseJobMessage(fields: string[]): JobMessage {
     commands:       JSON.parse(obj['commands'] ?? '[]'),
     env:            JSON.parse(obj['env']      ?? '{}'),
     timeoutSeconds: Number(obj['timeoutSeconds'] ?? 0),
+    repoUrl:        obj['repoUrl'],
+    branch:         obj['branch'],
+    commitSha:      obj['commitSha'],
   }
 }
 
