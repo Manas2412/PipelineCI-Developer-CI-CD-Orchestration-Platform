@@ -15,7 +15,7 @@ const createProjectSchema = z.object({
   slug: z.string().min(1).regex(/^[a-z0-9-]+$/, 'slug must be lowercase alphanumeric with hyphens'),
   repoUrl: z.string().url().optional(),
   description: z.string().optional(),
-  orgId: z.string().cuid(),
+  orgId: z.string().uuid(),
 })
 
 export async function projectsRoutes(app: FastifyInstance) {

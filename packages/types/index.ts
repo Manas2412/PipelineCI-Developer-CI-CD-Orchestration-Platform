@@ -106,6 +106,7 @@ export interface SafeUser {
     name: string | null
     avatarUrl: string | null
     role: string
+    orgId: string | null
 }
 
 //Projects

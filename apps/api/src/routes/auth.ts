@@ -29,20 +29,35 @@ export async function authRoutes(app: FastifyInstance) {
 
     const passwordHash = await bcrypt.hash(body.password, 10)
 
-    const user = await prisma.user.create({
-      data: {
-        email: body.email,
-        password: passwordHash,
-        name: body.name,
-        role: UserRole.MEMBER
-      }
+    // Create user + personal org + membership atomically
+    const { user, org } = await prisma.$transaction(async (tx) => {
+      const newUser = await tx.user.create({
+        data: {
+          email: body.email,
+          password: passwordHash,
+          name: body.name,
+          role: UserRole.MEMBER,
+        },
+      })
+
+      const orgSlug = body.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/, '') || 'personal'
+      const newOrg = await tx.organization.create({
+        data: { name: `${body.name}'s Org`, slug: orgSlug },
+      })
+
+      await tx.orgMember.create({
+        data: { userId: newUser.id, orgId: newOrg.id, role: 'OWNER' },
+      })
+
+      return { user: newUser, org: newOrg }
     })
 
     const token = app.jwt.sign({
       userId: user.id,
       email: user.email,
       name: user.name,
-      role: user.role
+      role: user.role,
+      orgId: org.id,
     })
 
     return reply.status(201).send({
@@ -53,9 +68,10 @@ export async function authRoutes(app: FastifyInstance) {
           id: user.id,
           email: user.email,
           name: user.name,
-          role: user.role
-        }
-      }
+          role: user.role,
+          orgId: org.id,
+        },
+      },
     })
   })
 
@@ -64,32 +80,28 @@ export async function authRoutes(app: FastifyInstance) {
     const body = loginSchema.parse(req.body)
 
     const user = await prisma.user.findFirst({
-      where: { email: body.email }
+      where: { email: body.email },
+      include: { memberships: { take: 1, orderBy: { joinedAt: 'asc' } } },
     })
 
     if (!user) {
-      return reply.status(401).send({
-        success: false,
-        error: 'Invalid credentials'
-      })
+      return reply.status(401).send({ success: false, error: 'Invalid credentials' })
     }
 
     const valid = await bcrypt.compare(body.password, user.password)
     if (!valid) {
-      return reply.status(401).send({
-        success: false,
-        error: 'Invalid credentials'
-      })
+      return reply.status(401).send({ success: false, error: 'Invalid credentials' })
     }
+
+    const orgId = user.memberships[0]?.orgId ?? null
 
     const token = app.jwt.sign({
       userId: user.id,
       email: user.email,
       name: user.name,
-      role: user.role
-    }, {
-      expiresIn: '7d'
-    })
+      role: user.role,
+      orgId,
+    }, { expiresIn: '7d' })
 
     return reply.send({
       success: true,
@@ -100,15 +112,15 @@ export async function authRoutes(app: FastifyInstance) {
           email: user.email,
           name: user.name,
           role: user.role,
-          avatarUrl: user.avatarUrl
-        }
-      }
+          avatarUrl: user.avatarUrl,
+          orgId,
+        },
+      },
     })
   })
 
   // GET /api/auth/me (protected)
   app.get('/me', async (req, reply) => {
-    // Assuming authenticate hook populates req.user
     const payload = req.user as { userId: string } | undefined
     if (!payload?.userId) {
       return reply.status(401).send({ success: false, error: 'Unauthorized' })
@@ -116,18 +128,21 @@ export async function authRoutes(app: FastifyInstance) {
 
     const user = await prisma.user.findUniqueOrThrow({
       where: { id: payload.userId },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        avatarUrl: true,
-        role: true
-      }
+      include: { memberships: { take: 1, orderBy: { joinedAt: 'asc' } } },
     })
+
+    const orgId = user.memberships[0]?.orgId ?? null
 
     return reply.send({
       success: true,
-      data: user
+      data: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        avatarUrl: user.avatarUrl,
+        role: user.role,
+        orgId,
+      },
     })
   })
 }

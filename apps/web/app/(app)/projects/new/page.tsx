@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { projectApi } from '@/lib/api'
+import { useAuthStore } from '@/lib/store'
 import { AppLayout } from '@/components/layout'
 import { Card, Button } from '@/components/ui'
 
@@ -27,13 +28,16 @@ export default function NewProjectPage() {
   const [description, setDescription] = useState('')
   const [slugEdited,  setSlugEdited]  = useState(false)
 
-  const ORG_ID = 'default-org'
+  const user = useAuthStore((s) => s.user)
+  const orgId = user?.orgId ?? null
 
   const createMutation = useMutation({
-    mutationFn: () =>
-      projectApi.create({ name, slug, repoUrl: repoUrl || undefined, description: description || undefined, orgId: ORG_ID }),
+    mutationFn: () => {
+      if (!orgId) throw new Error('No organisation found. Please log out and log in again.')
+      return projectApi.create({ name, slug, repoUrl: repoUrl || undefined, description: description || undefined, orgId })
+    },
     onSuccess: (project: any) => {
-      qc.invalidateQueries({ queryKey: ['projects', ORG_ID] })
+      qc.invalidateQueries({ queryKey: ['projects', orgId] })
       toast.success('Project created!')
       router.push(`/projects/${project.id}`)
     },
