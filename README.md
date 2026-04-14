@@ -80,6 +80,19 @@ This is a monorepo managed with **Turborepo** and **Bun Workspaces**:
 
 The dashboard will be available at `http://localhost:3000` and the API at `http://localhost:3001`.
 
+## 🐳 Docker Infrastructure
+
+PipelineCI uses Docker to provision its core infrastructure. You can start the required services (PostgreSQL and Redis) using:
+
+```bash
+docker-compose up -d
+```
+
+| Service | Image | Host Port | Internal Port |
+| :--- | :--- | :--- | :--- |
+| **PostgreSQL** | `postgres:16-alpine` | `5433` | `5432` |
+| **Redis** | `redis:7-alpine` | `6379` | `6379` |
+
 ## 🛠️ Tech Stack
 
 - **Frontend**: Next.js 14, React, Tailwind CSS, React Flow, TanStack Query.
@@ -89,4 +102,4 @@ The dashboard will be available at `http://localhost:3000` and the API at `http:
 
 ## 📜 License
 
-MIT © [Manas Sisodia](https://github.com/Manas2412)
+© [Manas Sisodia](https://github.com/Manas2412)
